@@ -1,12 +1,10 @@
 import { writable, type Readable } from 'svelte/store';
-import type { BackToFront, FrontToBack } from '$bindings/all';
+import type { BackToFront, FrontToBack, WorldSnapshot } from '$lib/bindings/all';
 
 export const ssr = false;
 
-type State = { type: 'valid'; time: string } | { type: 'error'; message: string };
-
 export function load() {
-    const state = writable<State | null>(null);
+    const state = writable<WorldSnapshot | null>(null);
 
     const ws = new WebSocket('ws://localhost:8080/ws');
 
@@ -17,20 +15,21 @@ export function load() {
 
     ws.onmessage = (event) => {
         const msg: BackToFront = JSON.parse(event.data);
-        if (msg.type === 'Time') {
-            state.set({ type: 'valid', time: msg.payload });
+        if (msg.type === 'WorldStateUpdate') {
+            state.set(msg.payload);
         }
     };
 
     ws.onerror = (event) => {
-        state.set({ type: 'error', message: event.type });
+        state.set(null);
+        console.error('WS error', event);
     };
 
     ws.onclose = () => {
-        state.set({ type: 'error', message: 'WS Closed' });
+        state.set(null);
     };
 
     return {
-        state: { subscribe: state.subscribe } satisfies Readable<State | null>
+        state: { subscribe: state.subscribe } satisfies Readable<WorldSnapshot | null>
     };
 }

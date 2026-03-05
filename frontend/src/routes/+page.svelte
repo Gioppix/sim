@@ -1,13 +1,12 @@
 <script lang="ts">
-    let { data } = $props();
+    import WorldView from '$lib/WorldView.svelte';
 
-    const current_state = $derived(data.state);
+    let { data } = $props();
+    const snapshot = $derived(data.state);
 </script>
 
-{#if $current_state === null}
-    <p>Waiting...</p>
-{:else if $current_state.type === 'valid'}
-    <p>{$current_state.time}</p>
+{#if $snapshot === null}
+    <p>Connecting...</p>
 {:else}
-    <p>Error: {$current_state.message}</p>
+    <WorldView snapshot={$snapshot} />
 {/if}

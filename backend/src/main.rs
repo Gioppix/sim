@@ -1,12 +1,15 @@
+pub mod ants;
+
 use actix_cors::Cors;
 use actix_web::{App, HttpRequest, HttpResponse, HttpServer, web};
 use actix_ws::Message;
-use chrono::Utc;
 use futures_util::StreamExt;
 use serde::{Deserialize, Serialize};
 use std::time::Duration;
 use tokio::time::interval;
 use ts_rs::TS;
+
+use ants::{World, WorldConfig, WorldSnapshot, snapshot};
 
 pub const TS_EXPORT_FILE: &str = "all.ts";
 
@@ -17,11 +20,11 @@ pub enum FrontToBack {
     Subscribe,
 }
 
-#[derive(Serialize, Deserialize, TS)]
+#[derive(Serialize, TS)]
 #[ts(export, export_to = crate::TS_EXPORT_FILE)]
 #[serde(tag = "type", content = "payload")]
 pub enum BackToFront {
-    Time(String),
+    WorldStateUpdate(WorldSnapshot),
 }
 
 async fn ws_handler(
@@ -31,21 +34,14 @@ async fn ws_handler(
     let (res, mut session, stream) = actix_ws::handle(&req, stream)?;
 
     actix_web::rt::spawn(async move {
+        let mut world = World::random(WorldConfig::default());
         let mut stream = stream;
-        let mut subscribed = false;
         let mut ticker = interval(Duration::from_millis(100));
 
         loop {
             tokio::select! {
                 msg = stream.next() => {
                     match msg {
-                        Some(Ok(Message::Text(text))) => {
-                            if let Ok(msg) = serde_json::from_str::<FrontToBack>(&text) {
-                                match msg {
-                                    FrontToBack::Subscribe => subscribed = true,
-                                }
-                            }
-                        }
                         Some(Ok(Message::Ping(bytes))) => {
                             let _ = session.pong(&bytes).await;
                         }
@@ -53,9 +49,9 @@ async fn ws_handler(
                         _ => {}
                     }
                 }
-                _ = ticker.tick(), if subscribed => {
-                    let now = Utc::now().to_rfc3339();
-                    let msg = BackToFront::Time(now);
+                _ = ticker.tick() => {
+                    world.step();
+                    let msg = BackToFront::WorldStateUpdate(snapshot(&world));
                     let json = serde_json::to_string(&msg).unwrap();
                     if session.text(json).await.is_err() {
                         break;

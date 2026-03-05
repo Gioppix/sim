@@ -1,0 +1,12 @@
+pub const WORLD_DEFAULT_SIZE: (f64, f64) = (100.0, 100.0);
+pub const WORLD_DEFAULT_FOOD_COUNT: f64 = 100.0;
+pub const FOOD_CLUSTER_COUNT: usize = 10;
+pub const INITIAL_WORKER_COUNT: usize = 8;
+pub const CLUSTER_RADIUS: f64 = 8.0;
+pub const ANT_VISION_RADIUS: f64 = 10.0;
+pub const ANT_STEP_SIZE: f64 = 1.0;
+pub const MAX_EAT_AMOUNT: f64 = 1.0;
+pub const MAX_PICK_AMOUNT: f64 = 5.0;
+pub const QUEEN_EXCLUSION_RADIUS: f64 = 5.0;
+pub const QUEEN_HATCH_COOLDOWN: u32 = 50;
+pub const ANT_HATCH_COST: f64 = 10.0;
