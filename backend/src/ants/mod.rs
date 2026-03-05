@@ -13,3 +13,6 @@ pub use world::{RestrictedWorld, World, WorldConfig};
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+pub mod evaluation;
