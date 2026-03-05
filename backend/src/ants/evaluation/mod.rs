@@ -4,6 +4,7 @@ use crate::ants::{World, WorldConfig};
 pub struct SimStats {
     pub ant_count: usize,
     pub queen_count: usize,
+    pub remaining_food: f64,
 }
 
 pub fn simulate(mut world: World, steps: u32) -> SimStats {
@@ -14,6 +15,7 @@ pub fn simulate(mut world: World, steps: u32) -> SimStats {
     SimStats {
         ant_count: world.ants.len(),
         queen_count: world.ants.iter().filter(|a| a.queen).count(),
+        remaining_food: world.food.iter().map(|f| f.amount).sum(),
     }
 }
 
