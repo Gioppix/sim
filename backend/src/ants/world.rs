@@ -55,7 +55,9 @@ pub struct World {
     pub config: WorldConfig,
     pub food: Vec<FoodItem>,
     pub ants: Vec<Ant>,
+    pub cemetery: Vec<Ant>,
     pub step_count: u32,
+    next_id: usize,
 }
 
 impl World {
@@ -92,8 +94,8 @@ impl World {
                 id,
                 position: Coordinates::random(&mut rng, config.size),
                 queen: false,
-                carrying_food: 0.0,
-                direction: 0.0,
+                food: ANT_START_FOOD,
+
                 steps_since_last_hatch: 0,
                 memory: Memory {
                     last_seen_queen: Some(queen_pos),
@@ -102,13 +104,12 @@ impl World {
             })
             .collect();
 
-        let queen_id = ants.len();
+        let queen_id = INITIAL_WORKER_COUNT;
         ants.push(Ant {
             id: queen_id,
             position: queen_pos,
             queen: true,
-            carrying_food: ANT_HATCH_COST * 5.0,
-            direction: 0.0,
+            food: ANT_HATCH_COST * 5.0,
             steps_since_last_hatch: QUEEN_HATCH_COOLDOWN,
             memory: Memory::default(),
         });
@@ -117,78 +118,75 @@ impl World {
             config,
             food,
             ants,
+            cemetery: Vec::new(),
             step_count: 0,
+            next_id: INITIAL_WORKER_COUNT + 1,
         }
     }
 
     pub fn step(&mut self) {
         let n = self.ants.len();
 
-        // Snapshot mutable-during-decide state so we can use &self for RestrictedWorld
-        struct DecideState {
-            memory: Memory,
-            direction: f64,
-            steps_since_last_hatch: u32,
-        }
-        let mut states: Vec<DecideState> = self
-            .ants
-            .iter()
-            .map(|a| DecideState {
-                memory: a.memory.clone(),
-                direction: a.direction,
-                steps_since_last_hatch: a.steps_since_last_hatch,
-            })
-            .collect();
-
-        let mut actions: Vec<(usize, Action)> = Vec::new();
-
+        let mut decisions: Vec<(usize, Action)> = Vec::with_capacity(n);
         for i in 0..n {
-            let rw = RestrictedWorld::new(&*self, self.ants[i].position, ANT_VISION_RADIUS);
+            let rw = RestrictedWorld::new(self, self.ants[i].position, ANT_VISION_RADIUS);
+            let action = self.ants[i].decide(&rw);
+            decisions.push((self.ants[i].id, action));
+        }
 
-            let mut temp = Ant {
-                id: self.ants[i].id,
-                position: self.ants[i].position,
-                queen: self.ants[i].queen,
-                carrying_food: self.ants[i].carrying_food,
-                direction: states[i].direction,
-                steps_since_last_hatch: states[i].steps_since_last_hatch,
-                memory: states[i].memory.clone(),
-            };
-
-            let action = temp.decide(&rw);
-            states[i].memory = temp.memory;
-            states[i].direction = temp.direction;
-            states[i].steps_since_last_hatch = temp.steps_since_last_hatch;
-            actions.push((temp.id, action));
+        let mut successes = vec![false; n];
+        let mut order: Vec<usize> = (0..n).collect();
+        order.shuffle(&mut rand::rng());
+        for i in order {
+            let (ant_id, ref action) = decisions[i];
+            successes[i] = self.execute_action(ant_id, action);
         }
 
         for i in 0..n {
-            self.ants[i].memory = states[i].memory.clone();
-            self.ants[i].direction = states[i].direction;
-            self.ants[i].steps_since_last_hatch = states[i].steps_since_last_hatch;
+            self.ants[i].update_memory(&decisions[i].1, successes[i]);
         }
 
-        let mut rng = rand::rng();
-        actions.shuffle(&mut rng);
-
-        for (ant_id, action) in actions {
-            self.execute_action(ant_id, action);
-        }
-
+        // Phase 5: remove depleted food and dead ants
         self.food.retain(|f| f.amount > 0.0);
+        let mut i = 0;
+        while i < self.ants.len() {
+            if self.ants[i].food <= 0.0 {
+                let dead = self.ants.swap_remove(i);
+                self.cemetery.push(dead);
+            } else {
+                i += 1;
+            }
+        }
+
         self.step_count += 1;
     }
 
-    pub fn execute_action(&mut self, ant_id: usize, action: Action) {
+    pub fn execute_action(&mut self, ant_id: usize, action: &Action) -> bool {
         match action {
             Action::Move(pos) => {
+                let pos = *pos;
                 if let Some(ant) = self.ants.iter_mut().find(|a| a.id == ant_id) {
-                    ant.position.x = pos.x.clamp(0.0, self.config.size.0);
-                    ant.position.y = pos.y.clamp(0.0, self.config.size.1);
+                    let clamped = Coordinates {
+                        x: pos.x.clamp(0.0, self.config.size.0),
+                        y: pos.y.clamp(0.0, self.config.size.1),
+                    };
+                    let dist = ant.position.distance(&clamped).min(ANT_STEP_SIZE);
+                    let actual = ant.position.move_toward(&clamped, dist);
+                    ant.food -= dist * STEP_COST;
+                    ant.position = actual;
                 }
+                true
             }
 
             Action::Eat { at, amount } => {
+                let (at, amount) = (*at, *amount);
+                let ant_pos = match self.ants.iter().find(|a| a.id == ant_id) {
+                    Some(a) => a.position,
+                    None => return false,
+                };
+                if ant_pos.distance(&at) > ANT_STEP_SIZE * 1.5 {
+                    return false;
+                }
                 if let Some(food) = self
                     .food
                     .iter_mut()
@@ -200,11 +198,26 @@ impl World {
                             .unwrap()
                     })
                 {
-                    food.amount -= amount.min(food.amount);
+                    let eaten = amount.min(food.amount);
+                    food.amount -= eaten;
+                    if let Some(ant) = self.ants.iter_mut().find(|a| a.id == ant_id) {
+                        ant.food += eaten;
+                    }
+                    true
+                } else {
+                    false
                 }
             }
 
             Action::PickFood { at, amount } => {
+                let (at, amount) = (*at, *amount);
+                let ant_pos = match self.ants.iter().find(|a| a.id == ant_id) {
+                    Some(a) => a.position,
+                    None => return false,
+                };
+                if ant_pos.distance(&at) > ANT_STEP_SIZE * 1.5 {
+                    return false;
+                }
                 if let Some(food) = self
                     .food
                     .iter_mut()
@@ -219,32 +232,41 @@ impl World {
                     let picked = amount.min(food.amount);
                     food.amount -= picked;
                     if let Some(ant) = self.ants.iter_mut().find(|a| a.id == ant_id) {
-                        ant.carrying_food += picked;
+                        ant.food += picked;
                     }
+                    true
+                } else {
+                    false
                 }
             }
 
             Action::DropFood { at, amount } => {
+                let (at, amount) = (*at, *amount);
                 if let Some(ant) = self.ants.iter_mut().find(|a| a.id == ant_id) {
-                    let dropped = amount.min(ant.carrying_food);
-                    ant.carrying_food -= dropped;
+                    if ant.position.distance(&at) > ANT_STEP_SIZE * 1.5 {
+                        return false;
+                    }
+                    let dropped = amount.min(ant.food);
+                    ant.food -= dropped;
                     self.food.push(FoodItem {
                         position: at,
                         amount: dropped,
                     });
                 }
+                true
             }
 
             Action::HatchAnts { count } => {
+                let count = *count;
                 let queen_idx = match self.ants.iter().position(|a| a.id == ant_id && a.queen) {
                     Some(idx) => idx,
-                    None => return,
+                    None => return false,
                 };
                 let cost = ANT_HATCH_COST * count as f64;
-                if self.ants[queen_idx].carrying_food < cost {
-                    return;
+                if self.ants[queen_idx].food < cost {
+                    return false;
                 }
-                self.ants[queen_idx].carrying_food -= cost;
+                self.ants[queen_idx].food -= cost;
                 self.ants[queen_idx].steps_since_last_hatch = 0;
                 let queen_pos = self.ants[queen_idx].position;
                 let start_id = self.ants.len();
@@ -253,8 +275,8 @@ impl World {
                         id: start_id + i,
                         position: queen_pos,
                         queen: false,
-                        carrying_food: 0.0,
-                        direction: 0.0,
+                        food: ANT_START_FOOD,
+        
                         steps_since_last_hatch: 0,
                         memory: Memory {
                             last_seen_queen: Some(queen_pos),
@@ -262,9 +284,10 @@ impl World {
                         },
                     });
                 }
+                true
             }
 
-            Action::Rest | Action::Pheromone { .. } => {}
+            Action::Rest | Action::Pheromone { .. } => true,
         }
     }
 }

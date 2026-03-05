@@ -10,7 +10,7 @@ pub struct AntSnapshot {
     pub id: usize,
     pub position: Coordinates,
     pub queen: bool,
-    pub carrying_food: f64,
+    pub food: f64,
 }
 
 #[derive(Serialize, TS)]
@@ -38,7 +38,7 @@ pub fn snapshot(world: &World) -> WorldSnapshot {
                 id: a.id,
                 position: a.position,
                 queen: a.queen,
-                carrying_food: a.carrying_food,
+                food: a.food,
             })
             .collect(),
         food: world

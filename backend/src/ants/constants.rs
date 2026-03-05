@@ -10,3 +10,5 @@ pub const MAX_PICK_AMOUNT: f64 = 5.0;
 pub const QUEEN_EXCLUSION_RADIUS: f64 = 5.0;
 pub const QUEEN_HATCH_COOLDOWN: u32 = 50;
 pub const ANT_HATCH_COST: f64 = 10.0;
+pub const ANT_START_FOOD: f64 = 5.0;
+pub const STEP_COST: f64 = 0.01; // food per unit distance

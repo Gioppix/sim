@@ -40,7 +40,7 @@ fn test_pick_and_drop() {
 
     world.execute_action(
         0,
-        Action::PickFood {
+        &Action::PickFood {
             at: Coordinates { x: 50.0, y: 50.0 },
             amount: 5.0,
         },
@@ -50,15 +50,15 @@ fn test_pick_and_drop() {
         "food should decrease after pick"
     );
     assert!(
-        world.ants[0].carrying_food > 0.0,
+        world.ants[0].food > 0.0,
         "ant should carry food after pick"
     );
 
     let food_count_before = world.food.len();
-    let carrying = world.ants[0].carrying_food;
+    let carrying = world.ants[0].food;
     world.execute_action(
         0,
-        Action::DropFood {
+        &Action::DropFood {
             at: Coordinates { x: 10.0, y: 10.0 },
             amount: carrying,
         },
@@ -74,7 +74,7 @@ fn test_hatch_requires_queen() {
     let mut world = World::random(WorldConfig::default());
     let initial_count = world.ants.len();
     assert!(!world.ants[0].queen);
-    world.execute_action(0, Action::HatchAnts { count: 1 });
+    world.execute_action(0, &Action::HatchAnts { count: 1 });
     assert_eq!(world.ants.len(), initial_count);
 }
 
@@ -90,7 +90,7 @@ fn test_step_runs() {
 fn test_move_clamps_to_world() {
     let mut world = World::random(WorldConfig::default());
     let ant_id = world.ants[0].id;
-    world.execute_action(ant_id, Action::Move(Coordinates { x: 200.0, y: 200.0 }));
+    world.execute_action(ant_id, &Action::Move(Coordinates { x: 200.0, y: 200.0 }));
     let ant = world.ants.iter().find(|a| a.id == ant_id).unwrap();
     assert!(ant.position.x <= world.config.size.0);
     assert!(ant.position.y <= world.config.size.1);
@@ -103,8 +103,9 @@ fn test_queen_hatches_over_time() {
     for _ in 0..200 {
         world.step();
     }
+    let total = world.ants.len() + world.cemetery.len();
     assert!(
-        world.ants.len() > initial_count,
-        "queen should have hatched additional ants after 200 steps"
+        total > initial_count,
+        "queen should have hatched additional ants after 200 steps (total created: {total})"
     );
 }
