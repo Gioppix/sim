@@ -1,2 +1,13 @@
-<h1>Welcome to SvelteKit</h1>
-<p>Visit <a href="https://svelte.dev/docs/kit">svelte.dev/docs/kit</a> to read the documentation</p>
+<script lang="ts">
+    let { data } = $props();
+
+    const current_state = $derived(data.state);
+</script>
+
+{#if $current_state === null}
+    <p>Waiting...</p>
+{:else if $current_state.type === 'valid'}
+    <p>{$current_state.time}</p>
+{:else}
+    <p>Error: {$current_state.message}</p>
+{/if}
