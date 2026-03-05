@@ -6,6 +6,20 @@ use super::world::World;
 
 #[derive(Serialize, TS)]
 #[ts(export, export_to = crate::TS_EXPORT_FILE)]
+pub struct WorldMetadata {
+    pub width: f64,
+    pub height: f64,
+}
+
+pub fn metadata(world: &World) -> WorldMetadata {
+    WorldMetadata {
+        width: world.config.size.0,
+        height: world.config.size.1,
+    }
+}
+
+#[derive(Serialize, TS)]
+#[ts(export, export_to = crate::TS_EXPORT_FILE)]
 pub struct AntSnapshot {
     pub id: usize,
     pub position: Coordinates,

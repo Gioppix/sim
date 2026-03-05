@@ -50,7 +50,9 @@ mod tests {
                     queen.map(|q| q.food).unwrap_or(-1.0),
                 );
             }
-            if queen.is_none() { break; }
+            if queen.is_none() {
+                break;
+            }
         }
     }
 }

@@ -1,17 +1,15 @@
 <script lang="ts">
-    import type { WorldSnapshot } from '$lib/bindings/all';
+    import type { WorldMetadata, WorldSnapshot } from '$lib/bindings/all';
 
-    const WORLD_SIZE = 100;
-
-    let { snapshot }: { snapshot: WorldSnapshot } = $props();
+    let { snapshot, metadata }: { snapshot: WorldSnapshot; metadata: WorldMetadata } = $props();
 </script>
 
 <div class="world">
     {#each snapshot.food as food (food.position.x + '_' + food.position.y)}
         <div
             class="food"
-            style="left: {(food.position.x / WORLD_SIZE) * 100}%; top: {(food.position.y /
-                WORLD_SIZE) *
+            style="left: {(food.position.x / metadata.width) * 100}%; top: {(food.position.y /
+                metadata.height) *
                 100}%; opacity: {Math.min(1, food.amount / 10)};"
         ></div>
     {/each}
@@ -20,8 +18,8 @@
         <div
             class="ant"
             class:queen={ant.queen}
-            style="left: {(ant.position.x / WORLD_SIZE) * 100}%; top: {(ant.position.y /
-                WORLD_SIZE) *
+            style="left: {(ant.position.x / metadata.width) * 100}%; top: {(ant.position.y /
+                metadata.height) *
                 100}%;"
         ></div>
     {/each}

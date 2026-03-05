@@ -2,12 +2,14 @@
 
 export type AntSnapshot = { id: number, position: Coordinates, queen: boolean, food: number, };
 
-export type BackToFront = { "type": "WorldStateUpdate", "payload": WorldSnapshot };
+export type BackToFront = { "type": "WorldMetadata", "payload": WorldMetadata } | { "type": "WorldStateUpdate", "payload": WorldSnapshot };
 
 export type Coordinates = { x: number, y: number, };
 
 export type FoodSnapshot = { position: Coordinates, amount: number, };
 
 export type FrontToBack = { "type": "Subscribe" };
+
+export type WorldMetadata = { width: number, height: number, };
 
 export type WorldSnapshot = { step_count: number, ants: Array<AntSnapshot>, food: Array<FoodSnapshot>, };

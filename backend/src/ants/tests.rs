@@ -49,10 +49,7 @@ fn test_pick_and_drop() {
         world.food[0].amount < 10.0,
         "food should decrease after pick"
     );
-    assert!(
-        world.ants[0].food > 0.0,
-        "ant should carry food after pick"
-    );
+    assert!(world.ants[0].food > 0.0, "ant should carry food after pick");
 
     let food_count_before = world.food.len();
     let carrying = world.ants[0].food;

@@ -9,7 +9,7 @@ use std::time::Duration;
 use tokio::time::interval;
 use ts_rs::TS;
 
-use ants::{World, WorldConfig, WorldSnapshot, snapshot};
+use ants::{World, WorldConfig, WorldMetadata, WorldSnapshot, metadata, snapshot};
 
 pub const TS_EXPORT_FILE: &str = "all.ts";
 
@@ -24,6 +24,7 @@ pub enum FrontToBack {
 #[ts(export, export_to = crate::TS_EXPORT_FILE)]
 #[serde(tag = "type", content = "payload")]
 pub enum BackToFront {
+    WorldMetadata(WorldMetadata),
     WorldStateUpdate(WorldSnapshot),
 }
 
@@ -37,6 +38,11 @@ async fn ws_handler(
         let mut world = World::random(WorldConfig::default());
         let mut stream = stream;
         let mut ticker = interval(Duration::from_millis(100));
+
+        let meta_msg = BackToFront::WorldMetadata(metadata(&world));
+        let _ = session
+            .text(serde_json::to_string(&meta_msg).unwrap())
+            .await;
 
         loop {
             tokio::select! {

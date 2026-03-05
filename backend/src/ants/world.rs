@@ -276,7 +276,7 @@ impl World {
                         position: queen_pos,
                         queen: false,
                         food: ANT_START_FOOD,
-        
+
                         steps_since_last_hatch: 0,
                         memory: Memory {
                             last_seen_queen: Some(queen_pos),

@@ -1,5 +1,5 @@
-pub const WORLD_DEFAULT_SIZE: (f64, f64) = (100.0, 100.0);
-pub const WORLD_DEFAULT_FOOD_COUNT: f64 = 100.0;
+pub const WORLD_DEFAULT_SIZE: (f64, f64) = (1000.0, 1000.0);
+pub const WORLD_DEFAULT_FOOD_COUNT: f64 = 1000.0;
 pub const FOOD_CLUSTER_COUNT: usize = 10;
 pub const INITIAL_WORKER_COUNT: usize = 8;
 pub const CLUSTER_RADIUS: f64 = 8.0;
